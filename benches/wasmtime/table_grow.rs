@@ -128,17 +128,29 @@ fn precheck() {
   for length in LENGTHS {
     let wasm_bytes = wat::parse_str(wat_source(*length, fun_switch)).unwrap();
     fun_switch = !fun_switch;
-    let compiler = wasmer::sys::Singlepass::default();
-    let mut store = wasmer::Store::new(compiler);
-    let module = wasmer::Module::from_binary(&store, &wasm_bytes).unwrap();
-    let instance = wasmer::Instance::new(&mut store, &module, &wasmer::imports! {}).unwrap();
-    let tab = instance.exports.get_table("tab").unwrap();
+    let mut config = wasmtime::Config::new();
+    config.strategy(wasmtime::Strategy::Winch);
+    let engine = wasmtime::Engine::new(&config).unwrap();
+    let mut store = wasmtime::Store::new(&engine, ());
+    let module = wasmtime::Module::from_binary(&engine, &wasm_bytes).unwrap();
+    let instance = wasmtime::Instance::new(&mut store, &module, &[]).unwrap();
+    let tab = instance.get_table(&mut store,"tab").unwrap();
     assert_eq!(INITIAL, tab.size(&store) as usize);
-    let fun = instance.exports.get_typed_function::<(), i32>(&store, "fun").unwrap();
-    assert_eq!(INITIAL as i32, fun.call(&mut store).unwrap());
-    assert_eq!(INITIAL + length, tab.size(&store) as usize);
+    let fun = instance.get_typed_func::<(), i32>(&mut store, "fun").unwrap();
+    assert_eq!(INITIAL as i32, fun.call(&mut store,()).unwrap());
+    assert_eq!(INITIAL + length, tab.size(&mut store) as usize);
   }
 }
+
+/*
+  let mut config = wasmtime::Config::new();
+  config.strategy(wasmtime::Strategy::Winch);
+  let engine = wasmtime::Engine::default();
+  let module = wasmtime::Module::from_binary(&engine, &wasm_bytes).unwrap();
+  let mut store = wasmtime::Store::new(&engine, ());
+  let instance = wasmtime::Instance::new(&mut store, &module, &[]).unwrap();
+  let fun = instance.get_typed_func::<(), i32>(&mut store, "fun").unwrap();
+ */
 
 fn _0001(c: &mut Criterion) {
   precheck();
