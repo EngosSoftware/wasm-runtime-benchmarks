@@ -89,7 +89,7 @@ const LENGTHS: &[usize] = &[
 ];
 
 /// Initial size of the benchmarked table.
-const INITIAL: usize = 1;
+const INITIAL: usize = 10_000;
 
 const TEMPLATE: &str = r#"
 (module
