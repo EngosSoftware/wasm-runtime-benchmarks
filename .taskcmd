@@ -1,0 +1,160 @@
+.vars
+  .BENCH_TOOLKIT +1.88.0
+
+.tasks
+
+  .audit
+    .desc Checks for vulnerabilities
+    .cmd cargo audit
+
+  .build
+    .desc Builds in debug mode
+    .cmd cargo build
+
+  .bench-all
+    .desc Executes all bulk-memory benchmarks
+    .cmd rm -rf target/criterion
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench memory-init | tee ./results/memory-init.txt
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench memory-grow | tee ./results/memory-grow.txt
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench memory-fill | tee ./results/memory-fill.txt
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench memory-copy | tee ./results/memory-copy.txt
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench table-init | tee ./results/table-init.txt
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench table-grow | tee ./results/table-grow.txt
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench table-fill | tee ./results/table-fill.txt
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench table-copy | tee ./results/table-copy.txt
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench data-drop | tee ./results/data-drop.txt
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench elem-drop | tee ./results/elem-drop.txt
+
+  .bench-clean-results
+    .cmd cat ./results/memory-init.txt | grep -E '^m.init' > ./results/memory-init-1.txt
+    .cmd cat ./results/memory-grow.txt | grep -E '^m.grow' > ./results/memory-grow-1.txt
+    .cmd cat ./results/memory-fill.txt | grep -E '^m.fill' > ./results/memory-fill-1.txt
+    .cmd cat ./results/memory-copy.txt | grep -E '^m.copy' > ./results/memory-copy-1.txt
+    .cmd cat ./results/table-init.txt  | grep -E '^t.init' > ./results/table-init-1.txt
+    .cmd cat ./results/table-grow.txt  | grep -E '^t.grow' > ./results/table-grow-1.txt
+    .cmd cat ./results/table-fill.txt  | grep -E '^t.fill' > ./results/table-fill-1.txt
+    .cmd cat ./results/table-copy.txt  | grep -E '^t.copy' > ./results/table-copy-1.txt
+    .cmd cat ./results/data-drop.txt   | grep -E '^d.drop' > ./results/data-drop-1.txt
+    .cmd cat ./results/elem-drop.txt   | grep -E '^e.drop' > ./results/elem-drop-1.txt
+
+  .bench-memory-init
+    .desc Executes benchmarks for memory.init operator
+    .cmd rm -rf target/criterion
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench memory-init
+
+  .bench-memory-grow
+      .desc Executes benchmarks for memory.grow operator
+      .cmd rm -rf target/criterion
+      .cmd cargo {{BENCH_TOOLKIT}} bench --bench memory-grow
+
+  .bench-memory-fill
+    .desc Executes benchmarks for memory.fill operator
+    .cmd rm -rf target/criterion
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench memory-fill
+
+  .bench-memory-copy
+    .desc Executes benchmarks for memory.copy operator
+    .cmd rm -rf target/criterion
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench memory-copy
+
+  .bench-table-init
+    .desc Executes benchmarks for table.init operator
+    .cmd rm -rf target/criterion
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench table-init
+
+  .bench-table-grow
+    .desc Executes benchmarks for table.grow operator
+    .cmd rm -rf target/criterion
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench table-grow
+
+  .bench-table-fill
+    .desc Executes benchmarks for table.fill operator
+    .cmd rm -rf target/criterion
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench table-fill
+
+  .bench-table-copy
+    .desc Executes benchmarks for table.copy operator
+    .cmd rm -rf target/criterion
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench table-copy
+
+  .bench-data-drop
+    .desc Executes benchmarks for data.drop operator
+    .cmd rm -rf target/criterion
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench data-drop
+
+  .bench-elem-drop
+    .desc Executes benchmarks for elem.drop operator
+    .cmd rm -rf target/criterion
+    .cmd cargo {{BENCH_TOOLKIT}} bench --bench elem-drop
+
+  .clean
+    .desc Cleans all targets
+    .cmd cargo clean
+    .cmd rm -rf ./manual/book
+
+  .clippy
+    .desc Runs clippy for all targets
+    .cmd cargo +nightly clippy --all-targets
+
+  .cov
+    .desc Generates code coverage report in text format
+    .cmd cargo llvm-cov clean
+    .cmd cargo llvm-cov --no-cfg-coverage
+
+  .cov-html
+    .desc Generates code coverage report in HTML format
+    .cmd cargo llvm-cov clean
+    .cmd cargo llvm-cov --no-cfg-coverage --html
+
+  .cov-html-open
+    .desc Generates code coverage report in HTML format and opens in browser
+    .cmd cargo llvm-cov clean
+    .cmd cargo llvm-cov --no-cfg-coverage --html --open
+
+  .cov-badge
+    .desc Generates the detailed code coverage badge
+    .cmd cargo llvm-cov clean
+    .cmd cargo llvm-cov --no-cfg-coverage --json --summary-only | coverio --collapse --tag cov-badge
+
+  .doc
+    .desc Generates documentation
+    .cmd cargo doc
+
+  .doc-private
+    .desc Generates documentation
+    .cmd cargo doc --document-private-items
+
+  .doc-open
+    .desc Generates documentation and opens in browser
+    .cmd cargo doc --open
+
+  .doc-private-open
+    .desc Generates documentation and opens in browser
+    .cmd cargo doc --open --document-private-items
+
+  .fmt
+    .desc Runs code formatter
+    .cmd cargo +nightly fmt
+
+  .manual
+    .desc Builds the manual from Markdown files
+    .cmd mdbook build
+      .dir manual
+
+  .readme
+    .desc Recreates README file
+    .cmd magg readme
+    .task cov-badge
+
+  .serve
+    .desc Serves manual locally and rebuilds on changes
+    .cmd mdbook serve
+      .dir manual
+
+  .test
+    .desc Runs tests in debug mode
+    .cmd cargo test
+
+  .testn
+    .desc Runs tests in debug mode
+    .cmd cargo nextest run

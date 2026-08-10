@@ -1,0 +1,15 @@
+[package]
+name = "wasm-runtime-benchmarks"
+version = "0.1.0"
+edition = "2024"
+
+[dev-dependencies]
+wat = "1.256.0"
+wasmtime = { version = "47.0.3", features = ["winch"] }
+wasmer = { version = "=5.0.6", features = ["singlepass"] }
+criterion = "0.8.2"
+
+[[bench]]
+name = "table-grow"
+path = "benches/wasmtime/table_grow.rs"
+harness = false
