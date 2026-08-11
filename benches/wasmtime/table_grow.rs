@@ -1,95 +1,18 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use std::time::Duration;
 
 #[cfg(target_os = "macos")]
-const MEASUREMENT_TIME: u64 = 10;
+const MEASUREMENT_TIME: u64 = 2;
 #[cfg(target_os = "linux")]
 const MEASUREMENT_TIME: u64 = 2;
 
-const SAMPLE_SIZE: usize = 20;
+const SAMPLE_SIZE: usize = 10;
 
 /// Lengths used for benchmarking.
-const LENGTHS: &[usize] = &[
-  0,
-  1,
-  2,
-  5,
-  10,
-  20,
-  30,
-  50,
-  60,
-  70,
-  80,
-  90,
-  100,
-  200,
-  300,
-  400,
-  500,
-  600,
-  700,
-  800,
-  900,
-  1_000,
-  2_000,
-  3_000,
-  4_000,
-  5_000,
-  6_000,
-  7_000,
-  8_000,
-  9_000,
-  10_000,
-  20_000,
-  30_000,
-  40_000,
-  50_000,
-  60_000,
-  70_000,
-  80_000,
-  90_000,
-  100_000,
-  200_000,
-  300_000,
-  400_000,
-  500_000,
-  600_000,
-  700_000,
-  800_000,
-  900_000,
-  1_000_000,
-  2_000_000,
-  3_000_000,
-  4_000_000,
-  5_000_000,
-  6_000_000,
-  7_000_000,
-  8_000_000,
-  9_000_000,
-  10_000_000,
-  20_000_000,
-  30_000_000,
-  40_000_000,
-  50_000_000,
-  60_000_000,
-  70_000_000,
-  80_000_000,
-  90_000_000,
-  100_000_000,
-  200_000_000,
-  300_000_000,
-  400_000_000,
-  500_000_000,
-  600_000_000,
-  700_000_000,
-  800_000_000,
-  900_000_000,
-  1_000_000_000,
-];
+const LENGTHS: &[usize] = &[1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000];
 
-/// Initial size of the benchmarked table.
-const INITIAL: usize = 10_000;
+/// Initial sizes of the benchmarked table.
+const INITIALS: &[usize] = &[1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000];
 
 const TEMPLATE: &str = r#"
 (module
@@ -106,10 +29,10 @@ const TEMPLATE: &str = r#"
 )
 "#;
 
-fn wat_source(grow: usize, fun: bool) -> String {
+fn wat_source(initial: usize, grow: usize, fun: bool) -> String {
   let fun = if fun { "$f1" } else { "$f2" };
   TEMPLATE
-    .replace("<INITIAL>", &INITIAL.to_string())
+    .replace("<INITIAL>", &initial.to_string())
     .replace("<GROW>", &grow.to_string())
     .replace("<FUN>", fun)
 }
@@ -125,20 +48,22 @@ fn make_config() -> Criterion {
 /// Checks if the benchmarked Wasm code works.
 fn precheck() {
   let mut fun_switch = false;
-  for length in LENGTHS {
-    let wasm_bytes = wat::parse_str(wat_source(*length, fun_switch)).unwrap();
-    fun_switch = !fun_switch;
-    let mut config = wasmtime::Config::new();
-    config.strategy(wasmtime::Strategy::Winch);
-    let engine = wasmtime::Engine::new(&config).unwrap();
-    let mut store = wasmtime::Store::new(&engine, ());
-    let module = wasmtime::Module::from_binary(&engine, &wasm_bytes).unwrap();
-    let instance = wasmtime::Instance::new(&mut store, &module, &[]).unwrap();
-    let tab = instance.get_table(&mut store,"tab").unwrap();
-    assert_eq!(INITIAL, tab.size(&store) as usize);
-    let fun = instance.get_typed_func::<(), i32>(&mut store, "fun").unwrap();
-    assert_eq!(INITIAL as i32, fun.call(&mut store,()).unwrap());
-    assert_eq!(INITIAL + length, tab.size(&mut store) as usize);
+  for initial in INITIALS {
+    for length in LENGTHS {
+      let wasm_bytes = wat::parse_str(wat_source(*initial, *length, fun_switch)).unwrap();
+      fun_switch = !fun_switch;
+      let mut config = wasmtime::Config::new();
+      config.strategy(wasmtime::Strategy::Winch);
+      let engine = wasmtime::Engine::new(&config).unwrap();
+      let mut store = wasmtime::Store::new(&engine, ());
+      let module = wasmtime::Module::from_binary(&engine, &wasm_bytes).unwrap();
+      let instance = wasmtime::Instance::new(&mut store, &module, &[]).unwrap();
+      let tab = instance.get_table(&mut store, "tab").unwrap();
+      assert_eq!(*initial, tab.size(&store) as usize);
+      let fun = instance.get_typed_func::<(), i32>(&mut store, "fun").unwrap();
+      assert_eq!(*initial as i32, fun.call(&mut store, ()).unwrap());
+      assert_eq!(initial + length, tab.size(&mut store) as usize);
+    }
   }
 }
 
@@ -146,29 +71,31 @@ fn _0001(c: &mut Criterion) {
   precheck();
   let mut config = wasmtime::Config::new();
   config.strategy(wasmtime::Strategy::Winch);
-  let mut group = c.benchmark_group("t.grow");
+  let mut group = c.benchmark_group("tg");
   let mut fun_switch = false;
-  for length in LENGTHS {
-    let wasm_bytes = wat::parse_str(wat_source(*length, fun_switch)).unwrap();
-    fun_switch = !fun_switch;
-    let engine = wasmtime::Engine::new(&config).unwrap();
-    let module = wasmtime::Module::from_binary(&engine, &wasm_bytes).unwrap();
-    group.bench_with_input(format!("{length}"), &length, |b, _| {
-      b.iter_batched_ref(
-        || {
-          let mut store = wasmtime::Store::new(&engine, ());
-          let instance = wasmtime::Instance::new(&mut store, &module, &[]).unwrap();
-          let warm = instance.get_typed_func::<(), ()>(&mut store, "warm").unwrap();
-          warm.call(&mut store, ()).unwrap();
-          let fun = instance.get_typed_func::<(), i32>(&mut store, "fun").unwrap();
-          (store, fun)
-        },
-        |(store, fun)| {
-          fun.call(store, ()).unwrap();
-        },
-        criterion::BatchSize::LargeInput,
-      );
-    });
+  for initial in INITIALS {
+    for length in LENGTHS {
+      let wasm_bytes = wat::parse_str(wat_source(*initial, *length, fun_switch)).unwrap();
+      fun_switch = !fun_switch;
+      let engine = wasmtime::Engine::new(&config).unwrap();
+      let module = wasmtime::Module::from_binary(&engine, &wasm_bytes).unwrap();
+      group.bench_with_input(format!("{initial}x{length}"), &length, |b, _| {
+        b.iter_batched_ref(
+          || {
+            let mut store = wasmtime::Store::new(&engine, ());
+            let instance = wasmtime::Instance::new(&mut store, &module, &[]).unwrap();
+            let warm = instance.get_typed_func::<(), ()>(&mut store, "warm").unwrap();
+            warm.call(&mut store, ()).unwrap();
+            let fun = instance.get_typed_func::<(), i32>(&mut store, "fun").unwrap();
+            (store, fun)
+          },
+          |(store, fun)| {
+            fun.call(store, ()).unwrap();
+          },
+          criterion::BatchSize::LargeInput,
+        );
+      });
+    }
   }
 }
 

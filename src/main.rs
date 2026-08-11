@@ -1,3 +1,3 @@
 fn main() {
-    println!("Wasm runtime benchmarks.");
+  println!("Wasm runtime benchmarks.");
 }
